@@ -1,8 +1,8 @@
-# 🚀 Loan Search Key Updater (Production-Ready)
+# 🚀 Loan Search Key Updater
 
 ## 📌 Overview
 
-This project provides a **production-ready PHP cron job** that updates the `search_key` field in the `dim_loan` table by combining user information from the `dim_user` table.
+This project provides a **PHP cron job** that updates the `search_key` field in the `dim_loan` table by combining user information from the `dim_user` table.
 
 The script is optimized for:
 
