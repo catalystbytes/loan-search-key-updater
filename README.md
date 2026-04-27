@@ -1,63 +1,210 @@
-# Automated PHP Script with Cron Job: Updating `search_key` in MySQL Table
+# 🚀 Loan Search Key Updater (Production-Ready)
 
-## Overview
-This repository contains a PHP script that automates the updating of the `search_key` field in the `dim_loan` table by generating `UPDATE` queries based on user data from the `dim_user` table. Additionally, a cron job is set up to automatically run the script daily at midnight to keep the database updated.
+## 📌 Overview
 
-## How It Works
-1. **Database Connection**: The PHP script connects to the MySQL database using the provided credentials.
-2. **Data Selection**: It selects records from the `dim_loan` table where the `search_key` is `NULL` or empty.
-3. **Query Generation**: For each record, it generates an `UPDATE` query that sets the `search_key` field to a combination of the user's first name, last name, email, and mobile number.
-4. **Transaction Safety**: The script executes these `UPDATE` queries within a transaction to ensure that all changes are either applied or rolled back if something goes wrong.
-5. **Automated Execution**: The script is scheduled to run daily at midnight via a cron job.
+This project provides a **production-ready PHP cron job** that updates the `search_key` field in the `dim_loan` table by combining user information from the `dim_user` table.
 
-## Requirements
-- **PHP**: Version 5.6 or later
-- **PDO Extension**: Enabled
-- **MySQL Database**: With the following tables:
-  - `dim_loan`: Contains loan records with a `search_key` field.
-  - `dim_user`: Contains user details such as first name, last name, email, and mobile number.
-- **Unix-like System**: For setting up cron jobs (Linux, macOS, etc.).
+The script is optimized for:
 
-## Setup
+* ⚡ High performance (single SQL execution)
+* 🔒 Security (environment-based configuration)
+* 📊 Observability (logging + execution metrics)
+* 🔁 Automation (cron job ready)
 
-### Step 1: Configure the PHP Script
-1. Clone this repository:
-```bash
-   git clone https://github.com/yourusername/loan-search-key-updater.git
+---
+
+## 🧠 How It Works
+
+Instead of generating multiple UPDATE statements, this solution uses a **single optimized SQL JOIN update**:
+
+* Joins `dim_loan` with `dim_user`
+* Concatenates:
+
+  * First Name
+  * Last Name
+  * Email
+  * Mobile
+* Updates only records where `search_key` is empty or NULL
+
+---
+
+## ⚙️ Tech Stack
+
+* PHP (7.4+ recommended)
+* MySQL / MariaDB
+* PDO Extension
+* Cron (Linux / Unix-based systems)
+
+---
+
+## 📁 Project Structure
+
 ```
-2. Update the database connection details in the update_search_key.php file:
-```bash
-  $host = 'your_host';
-  $dbname = 'your_database';
-  $username = 'your_username';
-  $password = 'your_password';
+loan-search-key-updater/
+│
+├── src/
+│   └── UpdateSearchKeyCommand.php   # Core logic
+│
+├── scripts/
+│   └── run-update-search-key.php    # Entry point for cron
+│
+├── config/
+│   └── .env.example                # Environment template
+│
+├── logs/
+│   └── search-key.log             # Execution logs
+│
+├── composer.json
+└── README.md
 ```
-3. Upload the script to your server, e.g., /var/www/html/scripts/update_search_key.php.
 
-### Step 2: Set Up the Cron Job
-To schedule the script to run daily at midnight, follow these steps:
-1. Open the crontab editor:
+---
+
+## 🔐 Environment Configuration
+
+Create a `.env` file inside `/config`:
+
+```
+DB_HOST=127.0.0.1
+DB_NAME=your_database
+DB_USER=your_user
+DB_PASS=your_password
+```
+
+> ⚠️ Never commit `.env` to version control.
+
+---
+
+## 🧾 Core SQL Logic
+
+```sql
+UPDATE dim_loan loan
+INNER JOIN dim_user user ON loan.created_by = user.id
+SET loan.search_key = CONCAT_WS(' ',
+    user.first_name,
+    user.last_name,
+    user.email,
+    user.mobile
+)
+WHERE loan.search_key IS NULL OR loan.search_key = '';
+```
+
+---
+
+## ▶️ Running the Script Manually
+
+```bash
+php scripts/run-update-search-key.php
+```
+
+---
+
+## ⏰ Cron Job Setup
+
+Edit crontab:
+
 ```bash
 crontab -e
 ```
-2. Add the following cron job:
+
+Add:
+
 ```bash
-0 0 * * * /usr/bin/php /var/www/html/scripts/update_search_key.php >/dev/null 2>&1
+0 0 * * * /usr/bin/php /var/www/loan-search-key-updater/scripts/run-update-search-key.php >> /var/www/loan-search-key-updater/logs/search-key.log 2>&1
 ```
-### Explanation:
 
-  - 0 0 * * *: Runs the script at midnight every day.
-  - /usr/bin/php: The path to the PHP executable (verify with which php).
-  - /var/www/html/scripts/update_search_key.php: The path to your PHP script.
-  - >/dev/null 2>&1: Discards output and errors, preventing clutter in log files.
+### 🔍 Cron Explanation:
 
-3. Save and exit the crontab editor.
+* `0 0 * * *` → Runs daily at midnight
+* Logs output to `logs/search-key.log`
+* Errors are captured for debugging
 
-To verify the cron job:
-```bash
-crontab -l
+---
+
+## 📊 Logging & Monitoring
+
+Each run outputs:
+
+* ✅ Number of rows updated
+* ⏱ Execution time
+* ❌ Errors (if any)
+
+Example log:
+
 ```
-### Error Handling
-The script ensures that if any error occurs during execution, the transaction is rolled back, preventing partial updates.
-Any errors will be logged using error_log() for troubleshooting purposes.
+[SUCCESS] Updated 1245 rows
+[INFO] Execution time: 0.42s
+```
 
+---
+
+## ⚡ Performance Considerations
+
+### Recommended Index:
+
+```sql
+CREATE INDEX idx_search_key ON dim_loan(search_key);
+```
+
+### For Large Datasets:
+
+* Add batching:
+
+```sql
+LIMIT 10000
+```
+
+* Run cron more frequently (e.g., every 5 minutes)
+
+---
+
+## 🔒 Security Best Practices
+
+* Use environment variables
+* Restrict DB user permissions (UPDATE only if possible)
+* Avoid exposing logs publicly
+* Do not echo sensitive data
+
+---
+
+## 🚨 Error Handling
+
+* Uses database transactions
+* Automatically rolls back on failure
+* Logs errors via `error_log`
+
+---
+
+## 🧪 Testing Checklist
+
+Before deploying to production:
+
+* [ ] Test on staging database
+* [ ] Verify affected rows count
+* [ ] Check log output
+* [ ] Validate cron execution
+* [ ] Simulate failure (wrong DB credentials)
+
+---
+
+## 🚀 Future Improvements
+
+You can evolve this into:
+
+* Laravel Artisan Command
+* Dockerized scheduled job
+* AWS Lambda + EventBridge scheduler
+* Airflow DAG for ETL pipelines
+* Real-time trigger via DB events
+
+---
+
+## 👨‍💻 Author
+
+Built for scalable data operations and automation workflows.
+
+---
+
+## 📄 License
+
+MIT License (or your preferred license)
