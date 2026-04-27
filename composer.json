@@ -1,0 +1,11 @@
+{
+  "name": "yourname/loan-search-key-updater",
+  "description": "Automated search_key updater using PHP and MySQL",
+  "type": "project",
+  "require": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "classmap": ["src/"]
+  }
+}
